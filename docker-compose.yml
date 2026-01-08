@@ -1,0 +1,55 @@
+services:
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: impact-parebrise-frontend:latest
+    container_name: impact-parebrise-frontend
+    ports:
+      - "8081:80"
+    environment:
+      # URL de l'API backend - Modifiez cette valeur selon votre configuration
+      # Pour ngrok: https://cytotropic-bipedally-ollie.ngrok-free.dev/api
+      # Pour Docker local: http://backend:6001/api
+      - API_URL=${API_URL:-http://backend:6001/api}
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - impact-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: impact-parebrise-backend:latest
+    container_name: impact-parebrise-backend
+    ports:
+      - "6001:6001"
+    environment:
+      - NODE_ENV=production
+      - PORT=6001
+    env_file:
+      - .env
+    volumes:
+      - ./backend/uploads:/usr/src/app/uploads
+      - ./backend/data:/usr/src/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:6001/api/services"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - impact-network
+
+volumes:
+  backend-uploads:
+    driver: local
+  backend-data:
+    driver: local
+
+networks:
+  impact-network:
+    driver: bridge
